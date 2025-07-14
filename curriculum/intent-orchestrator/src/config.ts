@@ -7,8 +7,8 @@ export const intents = [
 ];
 
 export const skills = {
-    greet: async () => "Hello! How can I help you?",
+    greet: async (_extractedSlots: Record<string, any> = {}) => "Hello! How can I help you?",
     loan_inquiry: handleLoanInquiry,
-    exit: async () => "Bye!",
-    unknown: async () => "Sorry, I didn't understand that.",
+    exit: async (_extractedSlots: Record<string, any> = {}) => "Bye!",
+    unknown: async (_extractedSlots: Record<string, any> = {}) => "Sorry, I didn't understand that.",
 };

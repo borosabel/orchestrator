@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f70df74a-a71f-4989-8ae6-472f47fc5dec" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/orchestrator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/orchestrator.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tools/loanInquiry.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tools/loanInquiry.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "git-widget-placeholder": "main",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "ts.external.directory.path": "/Users/abelboros/Documents/Work/Projects/orchestrator/curriculum/intent-orchestrator/node_modules/typescript/lib"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="LAST_COMMIT_MESSAGE" value="" />
+  </component>
+</project>
