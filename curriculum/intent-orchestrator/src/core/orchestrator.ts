@@ -24,7 +24,7 @@ async function main() {
         console.log(chalk.gray(`Detected intent: ${intent}`));
 
         // Extract slots from user input
-        const extractedSlots = extractSlots(intent, userInput);
+        const extractedSlots = await extractSlots(intent, userInput);
         if (Object.keys(extractedSlots).length > 0) {
             console.log(chalk.gray(`Extracted info: ${JSON.stringify(extractedSlots)}`));
         }

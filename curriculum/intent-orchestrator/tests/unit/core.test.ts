@@ -19,15 +19,15 @@ describe('Core Orchestrator Logic', () => {
     });
 
     describe('Slot Extraction Integration', () => {
-        test('should extract slots from user input based on intent', () => {
+        test('should extract slots from user input based on intent', async () => {
             const intent = 'loan_inquiry';
             const userInput = 'I need a $50000 car loan';
             
-            const extractedSlots = extractSlots(intent, userInput);
+            const extractedSlots = await extractSlots(intent, userInput);
             
             expect(extractedSlots.amount).toBe('50000');
             expect(extractedSlots.purpose).toBe('Car purchase');
-        });
+        }, 15000);
     });
 
     describe('Conversation Memory Integration', () => {
@@ -121,7 +121,7 @@ describe('Core Orchestrator Logic', () => {
             expect(intent).toBe('loan_inquiry');
             
             // Step 2: Extract slots
-            const extractedSlots = extractSlots(intent, userInput);
+            const extractedSlots = await extractSlots(intent, userInput);
             expect(extractedSlots.amount).toBe('40000');
             expect(extractedSlots.purpose).toBe('Home purchase');
             
@@ -149,18 +149,21 @@ describe('Core Orchestrator Logic', () => {
             const intent = await detectIntent(userInput);
             expect(intent).toBe('loan_inquiry');
             
-            // Step 2: Extract slots (should be empty)
-            const extractedSlots = extractSlots(intent, userInput);
-            expect(extractedSlots).toEqual({});
+            // Step 2: Extract slots (LangChain may extract purpose as "Other")
+            const extractedSlots = await extractSlots(intent, userInput);
+            // LangChain understands "I need a loan" as a general request
+            expect(extractedSlots.purpose).toBe('Other');
+            expect(extractedSlots.amount).toBeUndefined(); // No amount specified
             
             // Step 3: Start conversation
             conversationMemory.startOrContinueConversation(intent, extractedSlots);
             const allCollectedSlots = conversationMemory.getCollectedSlots();
             
-            // Step 4: Check for missing slots (should have missing slots)
+            // Step 4: Check for missing slots (should still need amount)
             const requiredSlots = slotDefinitions[intent] || [];
             const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
             expect(missingSlots.length).toBeGreaterThan(0);
+            expect(missingSlots.some(slot => slot.name === 'amount')).toBe(true);
         }, 30000);
     });
 }); 

@@ -1,4 +1,7 @@
-export function extractSlots(intentName: string, userInput: string): Record<string, any> {
+import { extractSlotsWithLangChain } from './langchainExtractor';
+
+// Original regex-based extractor (kept as fallback)
+export function extractSlotsWithRegex(intentName: string, userInput: string): Record<string, any> {
     const extractedSlots: Record<string, any> = {};
     const lowerInput = userInput.toLowerCase();
     
@@ -37,4 +40,32 @@ export function extractSlots(intentName: string, userInput: string): Record<stri
     }
     
     return extractedSlots;
+}
+
+// Main slot extractor - uses LangChain with regex fallback
+export async function extractSlots(intentName: string, userInput: string): Promise<Record<string, any>> {
+    try {
+        // Try LangChain first
+        const langchainSlots = await extractSlotsWithLangChain(intentName, userInput);
+        
+        // If LangChain extracted anything, use it
+        if (Object.keys(langchainSlots).length > 0) {
+            return langchainSlots;
+        }
+        
+        // If LangChain didn't extract anything, fallback to regex
+        return extractSlotsWithRegex(intentName, userInput);
+        
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.warn('LangChain slot extraction failed, falling back to regex:', errorMessage);
+        
+        // Fallback to regex on error
+        return extractSlotsWithRegex(intentName, userInput);
+    }
+}
+
+// Synchronous version for backward compatibility (uses regex only)
+export function extractSlotsSync(intentName: string, userInput: string): Record<string, any> {
+    return extractSlotsWithRegex(intentName, userInput);
 } 

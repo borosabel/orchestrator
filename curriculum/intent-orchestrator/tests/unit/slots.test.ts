@@ -1,5 +1,5 @@
+import { extractSlots, extractSlotsSync } from '../../src/slots/slotExtractor';
 import { slotDefinitions } from '../../src/slots/slotDefinitions';
-import { extractSlots } from '../../src/slots/slotExtractor';
 import { collectSlots } from '../../src/slots/slotCollector';
 
 describe('Slot Definitions', () => {
@@ -28,30 +28,75 @@ describe('Slot Definitions', () => {
     });
 });
 
-describe('Slot Extraction', () => {
+describe('Slot Extraction (LangChain)', () => {
+    test('should extract numeric amounts from text', async () => {
+        const result = await extractSlots('loan_inquiry', 'I need a loan for $50000');
+        expect(result.amount).toBe('50000');
+    }, 15000);
+
+    test('should extract purpose from text', async () => {
+        const result = await extractSlots('loan_inquiry', 'I need a home loan');
+        expect(result.purpose).toBe('Home purchase');
+    }, 15000);
+
+    test('should extract both amount and purpose', async () => {
+        const result = await extractSlots('loan_inquiry', 'I need a $25000 car loan');
+        expect(result.amount).toBe('25000');
+        expect(result.purpose).toBe('Car purchase');
+    }, 15000);
+
+    test('should handle written numbers', async () => {
+        const result = await extractSlots('loan_inquiry', 'fifty thousand dollars for home');
+        expect(result.amount).toBe('50000');
+        expect(result.purpose).toBe('Home purchase');
+    }, 15000);
+
+    test('should understand synonyms', async () => {
+        const result = await extractSlots('loan_inquiry', 'one hundred thousand for house');
+        expect(result.amount).toBe('100000');
+        expect(result.purpose).toBe('Home purchase');
+    }, 15000);
+
+    test('should handle context understanding', async () => {
+        const result = await extractSlots('loan_inquiry', 'loan for starting a company');
+        expect(result.purpose).toBe('Business expansion');
+    }, 15000);
+
+    test('should return empty object for unknown intent', async () => {
+        const result = await extractSlots('unknown_intent', 'some text');
+        expect(result).toEqual({});
+    }, 15000);
+
+    test('should return empty object when no slots found', async () => {
+        const result = await extractSlots('loan_inquiry', 'hello there');
+        expect(result).toEqual({});
+    }, 15000);
+});
+
+describe('Slot Extraction (Regex Fallback)', () => {
     test('should extract numeric amounts from text', () => {
-        const result = extractSlots('loan_inquiry', 'I need a loan for $50000');
+        const result = extractSlotsSync('loan_inquiry', 'I need a loan for $50000');
         expect(result.amount).toBe('50000');
     });
 
     test('should extract purpose from text', () => {
-        const result = extractSlots('loan_inquiry', 'I need a home loan');
+        const result = extractSlotsSync('loan_inquiry', 'I need a home loan');
         expect(result.purpose).toBe('Home purchase');
     });
 
     test('should extract both amount and purpose', () => {
-        const result = extractSlots('loan_inquiry', 'I need a $25000 car loan');
+        const result = extractSlotsSync('loan_inquiry', 'I need a $25000 car loan');
         expect(result.amount).toBe('25000');
         expect(result.purpose).toBe('Car purchase');
     });
 
     test('should return empty object for unknown intent', () => {
-        const result = extractSlots('unknown_intent', 'some text');
+        const result = extractSlotsSync('unknown_intent', 'some text');
         expect(result).toEqual({});
     });
 
     test('should return empty object when no slots found', () => {
-        const result = extractSlots('loan_inquiry', 'hello there');
+        const result = extractSlotsSync('loan_inquiry', 'hello there');
         expect(result).toEqual({});
     });
 });
