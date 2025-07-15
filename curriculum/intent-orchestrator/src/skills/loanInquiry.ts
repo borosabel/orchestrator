@@ -1,4 +1,4 @@
-import { collectSlots } from '../slotCollector';
+import { collectSlots } from '../slots/slotCollector';
 
 export async function handleLoanInquiry(extractedSlots: Record<string, any> = {}) {
     const slots = await collectSlots('loan_inquiry', extractedSlots);

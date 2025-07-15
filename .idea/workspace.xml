@@ -5,9 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f70df74a-a71f-4989-8ae6-472f47fc5dec" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/config.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/orchestrator.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/orchestrator.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tools/loanInquiry.ts" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tools/loanInquiry.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/jest.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/jest.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/curriculum/intent-orchestrator/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/intentDetector.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/orchestrator.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/slotCollector.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/slotDefinitions.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/slotExtractor.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tests/unit/intentDetector.test.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/curriculum/intent-orchestrator/src/tools/loanInquiry.ts" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

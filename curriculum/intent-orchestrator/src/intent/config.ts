@@ -1,4 +1,4 @@
-import {handleLoanInquiry} from "./tools/loanInquiry";
+import {handleLoanInquiry} from "../skills/loanInquiry";
 
 export const intents = [
     { name: 'greet', patterns: [/hello/i, /hi/i] },
