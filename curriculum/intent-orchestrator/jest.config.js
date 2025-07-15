@@ -9,5 +9,9 @@ module.exports = {
         '^@/(.*)$': '<rootDir>/src/$1'
     },
     roots: ['<rootDir>/src', '<rootDir>/tests'],
-    rootDir: '.'
+    rootDir: '.',
+    // Mock inquirer to avoid ES module issues
+    moduleNameMapper: {
+        '^inquirer$': '<rootDir>/tests/__mocks__/inquirer.js'
+    }
 };
