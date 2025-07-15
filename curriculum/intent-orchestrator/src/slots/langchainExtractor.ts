@@ -78,6 +78,30 @@ Examples:
 "Book me something for Friday morning" → {{"date": "Friday", "time": "morning"}}
 `);
 
+// Define slot extraction prompt for appointment cancellation
+const cancelSlotPrompt = PromptTemplate.fromTemplate(`
+You are an information extraction system for appointment cancellation.
+Extract the confirmation ID from the user's message.
+
+User message: "{text}"
+
+Extract the information and respond in JSON format:
+{{
+  "confirmation_id": "extracted_confirmation_id"
+}}
+
+Rules:
+- Look for appointment confirmation IDs in format APT-XXXXXX (where X is a digit)
+- Extract the ID exactly as mentioned, preserving the APT- prefix
+- If no confirmation ID is found, omit the field from the JSON
+- Respond with valid JSON only, no other text
+
+Examples:
+"Cancel appointment APT-123456" → {{"confirmation_id": "APT-123456"}}
+"I want to cancel my booking APT-789012" → {{"confirmation_id": "APT-789012"}}
+"Cancel my appointment please" → {{}}
+`);
+
 export async function extractSlotsWithLangChain(intentName: string, userInput: string): Promise<Record<string, any>> {
     try {
         // Handle different intents
@@ -85,6 +109,8 @@ export async function extractSlotsWithLangChain(intentName: string, userInput: s
             return await extractLoanSlots(userInput);
         } else if (intentName === 'schedule_appointment') {
             return await extractAppointmentSlots(userInput);
+        } else if (intentName === 'cancel_appointment') {
+            return await extractCancelSlots(userInput);
         } else {
             return {}; // No slot extraction for other intents
         }
@@ -197,6 +223,41 @@ async function extractAppointmentSlots(userInput: string): Promise<Record<string
         const service = String(extractedData.service);
         if (validServices.includes(service)) {
             cleanedSlots.service = service;
+        }
+    }
+    
+    return cleanedSlots;
+}
+
+// Extract cancellation-specific slots
+async function extractCancelSlots(userInput: string): Promise<Record<string, any>> {
+    // Format the prompt with user input
+    const formattedPrompt = await cancelSlotPrompt.format({ text: userInput });
+    
+    // Get response from OpenAI
+    const response = await model.invoke(formattedPrompt);
+    
+    // Parse JSON response
+    const content = response.content.toString().trim();
+    
+    // Extract JSON from response (in case there's extra text)
+    const jsonMatch = content.match(/\{[^}]*\}/);
+    if (!jsonMatch) {
+        return {}; // No valid JSON found
+    }
+    
+    const extractedData = JSON.parse(jsonMatch[0]);
+    
+    // Validate and clean the extracted data
+    const cleanedSlots: Record<string, any> = {};
+    
+    // Validate confirmation ID
+    if (extractedData.confirmation_id) {
+        const confirmationId = String(extractedData.confirmation_id).trim();
+        // Check if it matches the expected format APT-XXXXXX
+        const idPattern = /^APT-\d{6}$/i;
+        if (idPattern.test(confirmationId)) {
+            cleanedSlots.confirmation_id = confirmationId.toUpperCase(); // Standardize to uppercase
         }
     }
     

@@ -69,6 +69,19 @@ export const slotDefinitions: IntentSlots = {
             ]
         }
     ],
+    cancel_appointment: [
+        {
+            name: 'confirmation_id',
+            message: 'What is your appointment confirmation ID?',
+            type: 'input',
+            validate: (input: string) => {
+                // Basic validation for appointment ID format (APT-XXXXXX)
+                const idPattern = /^APT-\d{6}$/i;
+                if (idPattern.test(input.trim())) return true;
+                return 'Please enter a valid confirmation ID (format: APT-123456)';
+            }
+        }
+    ],
     greet: [], // No slots needed for greeting
     exit: [], // No slots needed for exit
     unknown: [] // No slots needed for unknown
