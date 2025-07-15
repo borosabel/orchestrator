@@ -102,6 +102,47 @@ Examples:
 "Cancel my appointment please" → {{}}
 `);
 
+// Define slot extraction prompt for availability checking
+const availabilitySlotPrompt = PromptTemplate.fromTemplate(`
+You are an information extraction system for availability checking.
+Extract the date, time preference, and service type from the user's message.
+
+Valid time preferences are:
+- Morning (9am-12pm)
+- Afternoon (12pm-5pm)
+- Evening (5pm-8pm)
+- Any time
+
+Valid service types are:
+- Medical consultation
+- Business meeting
+- Personal consultation
+- Technical support
+- Any service
+
+User message: "{text}"
+
+Extract the information and respond in JSON format:
+{{
+  "date": "extracted_date_as_mentioned",
+  "time_preference": "exact_time_preference_from_valid_list",
+  "service": "exact_service_from_valid_list"
+}}
+
+Rules:
+- For date: Extract as mentioned (e.g., "tomorrow", "Monday", "Jan 15", "this week")
+- For time_preference: Map to exact match from valid time preferences, or omit if unclear
+- For service: Use exact match from valid service types, or "Any service" if not specified
+- If information is not found, omit that field from the JSON
+- Respond with valid JSON only, no other text
+
+Examples:
+"What's available tomorrow morning?" → {{"date": "tomorrow", "time_preference": "Morning (9am-12pm)"}}
+"Check availability for medical appointments this week" → {{"date": "this week", "service": "Medical consultation"}}
+"Any openings Friday afternoon?" → {{"date": "Friday", "time_preference": "Afternoon (12pm-5pm)"}}
+"What's open next week?" → {{"date": "next week"}}
+`);
+
 export async function extractSlotsWithLangChain(intentName: string, userInput: string): Promise<Record<string, any>> {
     try {
         // Handle different intents
@@ -111,6 +152,8 @@ export async function extractSlotsWithLangChain(intentName: string, userInput: s
             return await extractAppointmentSlots(userInput);
         } else if (intentName === 'cancel_appointment') {
             return await extractCancelSlots(userInput);
+        } else if (intentName === 'check_availability') {
+            return await extractAvailabilitySlots(userInput);
         } else {
             return {}; // No slot extraction for other intents
         }
@@ -258,6 +301,70 @@ async function extractCancelSlots(userInput: string): Promise<Record<string, any
         const idPattern = /^APT-\d{6}$/i;
         if (idPattern.test(confirmationId)) {
             cleanedSlots.confirmation_id = confirmationId.toUpperCase(); // Standardize to uppercase
+        }
+    }
+    
+    return cleanedSlots;
+}
+
+// Extract availability check-specific slots
+async function extractAvailabilitySlots(userInput: string): Promise<Record<string, any>> {
+    // Format the prompt with user input
+    const formattedPrompt = await availabilitySlotPrompt.format({ text: userInput });
+    
+    // Get response from OpenAI
+    const response = await model.invoke(formattedPrompt);
+    
+    // Parse JSON response
+    const content = response.content.toString().trim();
+    
+    // Extract JSON from response (in case there's extra text)
+    const jsonMatch = content.match(/\{[^}]*\}/);
+    if (!jsonMatch) {
+        return {}; // No valid JSON found
+    }
+    
+    const extractedData = JSON.parse(jsonMatch[0]);
+    
+    // Validate and clean the extracted data
+    const cleanedSlots: Record<string, any> = {};
+    
+    // Validate date
+    if (extractedData.date) {
+        const date = String(extractedData.date).trim();
+        if (date.length > 0) {
+            cleanedSlots.date = date;
+        }
+    }
+    
+    // Validate time preference
+    if (extractedData.time_preference) {
+        const validTimePreferences = [
+            'Morning (9am-12pm)',
+            'Afternoon (12pm-5pm)',
+            'Evening (5pm-8pm)',
+            'Any time'
+        ];
+        
+        const timePreference = String(extractedData.time_preference);
+        if (validTimePreferences.includes(timePreference)) {
+            cleanedSlots.time_preference = timePreference;
+        }
+    }
+    
+    // Validate service
+    if (extractedData.service) {
+        const validServices = [
+            'Medical consultation',
+            'Business meeting',
+            'Personal consultation',
+            'Technical support',
+            'Any service'
+        ];
+        
+        const service = String(extractedData.service);
+        if (validServices.includes(service)) {
+            cleanedSlots.service = service;
         }
     }
     

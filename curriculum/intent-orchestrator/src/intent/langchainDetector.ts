@@ -21,12 +21,13 @@ Classify the user's message into one of these categories:
 - loan_inquiry: Questions about loans, borrowing money, financial assistance
 - schedule_appointment: Requests to book, schedule, or arrange appointments or meetings
 - cancel_appointment: Requests to cancel, delete, or remove existing appointments
+- check_availability: Requests to check available time slots, see what's open, or inquire about availability
 - exit: Goodbyes, exit requests, ending conversation  
 - unknown: Anything else that doesn't fit the above categories
 
 User message: "{text}"
 
-Respond with ONLY the intent name (greet, loan_inquiry, schedule_appointment, cancel_appointment, exit, or unknown).
+Respond with ONLY the intent name (greet, loan_inquiry, schedule_appointment, cancel_appointment, check_availability, exit, or unknown).
 `);
 
 export async function detectIntentWithLangChain(text: string): Promise<string> {
@@ -41,7 +42,7 @@ export async function detectIntentWithLangChain(text: string): Promise<string> {
         const intent = response.content.toString().trim().toLowerCase();
         
         // Validate the intent is one we support
-        const validIntents = ['greet', 'loan_inquiry', 'schedule_appointment', 'cancel_appointment', 'exit', 'unknown'];
+        const validIntents = ['greet', 'loan_inquiry', 'schedule_appointment', 'cancel_appointment', 'check_availability', 'exit', 'unknown'];
         return validIntents.includes(intent) ? intent : 'unknown';
         
     } catch (error) {

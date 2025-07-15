@@ -82,6 +82,40 @@ export const slotDefinitions: IntentSlots = {
             }
         }
     ],
+    check_availability: [
+        {
+            name: 'date',
+            message: 'What date would you like to check availability for?',
+            type: 'input',
+            validate: (_input: string) => {
+                // Optional field - accept any input or empty
+                return true;
+            }
+        },
+        {
+            name: 'time_preference',
+            message: 'Do you have a preferred time of day?',
+            type: 'list',
+            choices: [
+                'Morning (9am-12pm)',
+                'Afternoon (12pm-5pm)', 
+                'Evening (5pm-8pm)',
+                'Any time'
+            ]
+        },
+        {
+            name: 'service',
+            message: 'What type of appointment are you looking for?',
+            type: 'list',
+            choices: [
+                'Medical consultation',
+                'Business meeting',
+                'Personal consultation',
+                'Technical support',
+                'Any service'
+            ]
+        }
+    ],
     greet: [], // No slots needed for greeting
     exit: [], // No slots needed for exit
     unknown: [] // No slots needed for unknown
