@@ -12,8 +12,11 @@ describe('Loan Inquiry Skill', () => {
         expect(result).toBeDefined();
         expect(typeof result).toBe('string');
         expect(result).toContain('$25,000');
-        expect(result).toContain('car purchase');
+        expect(result).toContain('Car purchase');
         expect(result).toContain('review your application');
+        expect(result).toContain('💰 **Loan Application Details**');
+        expect(result).toContain('📊 **Amount:**');
+        expect(result).toContain('🎯 **Purpose:**');
     });
 
     test('should handle different loan amounts', async () => {
@@ -25,7 +28,8 @@ describe('Loan Inquiry Skill', () => {
         const result = await handleLoanInquiry(slots);
         
         expect(result).toContain('$100,000');
-        expect(result).toContain('home purchase');
+        expect(result).toContain('Home purchase');
+        expect(result).toContain('💰 **Loan Application Details**');
     });
 
     test('should handle various loan purposes', async () => {
@@ -38,7 +42,9 @@ describe('Loan Inquiry Skill', () => {
             };
             
             const result = await handleLoanInquiry(slots);
-            expect(result).toContain(purpose.toLowerCase());
+            expect(result).toContain(purpose); // Check exact case match
+            expect(result).toContain('💰 **Loan Application Details**');
+            expect(result).toContain('🎯 **Purpose:**');
         }
     });
 
@@ -60,10 +66,11 @@ describe('Loan Inquiry Skill', () => {
         expect(resultAmount).toBeDefined();
         expect(resultPurpose).toBeDefined();
         expect(resultAmount).toContain('$50,000');
-        expect(resultPurpose).toContain('education');
+        expect(resultAmount).toContain('general purposes'); // Default purpose when only amount provided
+        expect(resultPurpose).toContain('how much'); // Should ask for amount when only purpose provided
     });
 
-    test('should return consistent response format', async () => {
+    test('should return consistent professional response format', async () => {
         const slots = {
             amount: '20000',
             purpose: 'Personal expenses'
@@ -71,11 +78,15 @@ describe('Loan Inquiry Skill', () => {
         
         const result = await handleLoanInquiry(slots);
         
-        // Check that response follows expected format
-        expect(result).toMatch(/You've requested/);
-        expect(result).toMatch(/We'll review your application/);
-        expect(result.length).toBeGreaterThan(10);
-        expect(result.length).toBeLessThan(500);
+        // Check that response follows professional format
+        expect(result).toContain('💰 **Loan Application Details**');
+        expect(result).toContain('✅ **Next Steps:**');
+        expect(result).toContain('📋 **Required Documents:**');
+        expect(result).toContain('💡 **Estimated monthly payment:**');
+        expect(result).toContain('📞 Questions? Call our loan specialists');
+        expect(result).toContain("We'll review your application");
+        expect(result.length).toBeGreaterThan(100);
+        expect(result.length).toBeLessThan(800);
     });
 
     test('should handle string amounts without formatting issues', async () => {
