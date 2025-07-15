@@ -1,123 +1,128 @@
-import { extractSlots, extractSlotsSync } from '../../src/slots/slotExtractor';
-import { slotDefinitions } from '../../src/slots/slotDefinitions';
-import { collectSlots } from '../../src/slots/slotCollector';
+import { genericSlotExtractor } from '../../src/core/genericSlotExtractor';
+import { configLoader } from '../../src/config/configLoader';
+import { appointmentDomainConfig } from '../../src/domains/appointments.config';
 
-describe('Slot Definitions', () => {
-    test('should have loan_inquiry slot definition', () => {
-        expect(slotDefinitions.loan_inquiry).toBeDefined();
-        expect(Array.isArray(slotDefinitions.loan_inquiry)).toBe(true);
-        expect(slotDefinitions.loan_inquiry.length).toBe(2);
+describe('Generic Slot Extraction Module', () => {
+    beforeAll(async () => {
+        // Load the appointments domain configuration
+        await configLoader.loadConfig(appointmentDomainConfig);
+        const config = configLoader.getCurrentConfig();
+        if (config) {
+            await genericSlotExtractor.initialize(config);
+        }
     });
 
-    test('should have required slot types', () => {
-        const loanSlots = slotDefinitions.loan_inquiry;
-        const amountSlot = loanSlots.find(slot => slot.name === 'amount');
-        const purposeSlot = loanSlots.find(slot => slot.name === 'purpose');
-        
-        expect(amountSlot?.type).toBe('input');
-        expect(purposeSlot?.type).toBe('list');
-        expect(purposeSlot?.choices).toBeDefined();
-        expect(Array.isArray(purposeSlot?.choices)).toBe(true);
+    afterAll(() => {
+        // Clean up
+        genericSlotExtractor.reset();
     });
 
-    test('should have validation for amount', () => {
-        const loanSlots = slotDefinitions.loan_inquiry;
-        const amountSlot = loanSlots.find(slot => slot.name === 'amount');
-        expect(amountSlot?.validate).toBeDefined();
-        expect(typeof amountSlot?.validate).toBe('function');
-    });
-});
+    describe('Slot Definitions', () => {
+        test('should have schedule_appointment slot definition', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('schedule_appointment');
+            expect(slots).toBeDefined();
+            expect(Array.isArray(slots)).toBe(true);
+            expect(slots.length).toBe(3); // date, time, service
+        });
 
-describe('Slot Extraction (LangChain)', () => {
-    test('should extract numeric amounts from text', async () => {
-        const result = await extractSlots('loan_inquiry', 'I need a loan for $50000');
-        expect(result.amount).toBe('50000');
-    }, 15000);
+        test('should have cancel_appointment slot definition', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('cancel_appointment');
+            expect(slots).toBeDefined();
+            expect(Array.isArray(slots)).toBe(true);
+            expect(slots.length).toBe(1); // confirmation_id
+        });
 
-    test('should extract purpose from text', async () => {
-        const result = await extractSlots('loan_inquiry', 'I need a home loan');
-        expect(result.purpose).toBe('Home purchase');
-    }, 15000);
+        test('should have check_availability slot definition', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('check_availability');
+            expect(slots).toBeDefined();
+            expect(Array.isArray(slots)).toBe(true);
+            expect(slots.length).toBe(3); // date, time_preference, service
+        });
 
-    test('should extract both amount and purpose', async () => {
-        const result = await extractSlots('loan_inquiry', 'I need a $25000 car loan');
-        expect(result.amount).toBe('25000');
-        expect(result.purpose).toBe('Car purchase');
-    }, 15000);
+        test('should have required slot types for appointments', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('schedule_appointment');
+            const dateSlot = slots.find(slot => slot.name === 'date');
+            const timeSlot = slots.find(slot => slot.name === 'time');
+            const serviceSlot = slots.find(slot => slot.name === 'service');
+            
+            expect(dateSlot?.type).toBe('input');
+            expect(timeSlot?.type).toBe('input');
+            expect(serviceSlot?.type).toBe('list');
+            expect(serviceSlot?.choices).toBeDefined();
+            expect(Array.isArray(serviceSlot?.choices)).toBe(true);
+        });
 
-    test('should handle written numbers', async () => {
-        const result = await extractSlots('loan_inquiry', 'fifty thousand dollars for home');
-        expect(result.amount).toBe('50000');
-        expect(result.purpose).toBe('Home purchase');
-    }, 15000);
-
-    test('should understand synonyms', async () => {
-        const result = await extractSlots('loan_inquiry', 'one hundred thousand for house');
-        expect(result.amount).toBe('100000');
-        expect(result.purpose).toBe('Home purchase');
-    }, 15000);
-
-    test('should handle context understanding', async () => {
-        const result = await extractSlots('loan_inquiry', 'loan for starting a company');
-        expect(result.purpose).toBe('Business expansion');
-    }, 15000);
-
-    test('should return empty object for unknown intent', async () => {
-        const result = await extractSlots('unknown_intent', 'some text');
-        expect(result).toEqual({});
-    }, 15000);
-
-    test('should return empty object when no slots found', async () => {
-        const result = await extractSlots('loan_inquiry', 'hello there');
-        expect(result).toEqual({});
-    }, 15000);
-});
-
-describe('Slot Extraction (Regex Fallback)', () => {
-    test('should extract numeric amounts from text', () => {
-        const result = extractSlotsSync('loan_inquiry', 'I need a loan for $50000');
-        expect(result.amount).toBe('50000');
+        test('should have validation for confirmation_id', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('cancel_appointment');
+            const confirmationSlot = slots.find(slot => slot.name === 'confirmation_id');
+            expect(confirmationSlot?.validate).toBeDefined();
+            expect(typeof confirmationSlot?.validate).toBe('function');
+        });
     });
 
-    test('should extract purpose from text', () => {
-        const result = extractSlotsSync('loan_inquiry', 'I need a home loan');
-        expect(result.purpose).toBe('Home purchase');
+    describe('Slot Extraction', () => {
+        test('should extract appointment scheduling slots', async () => {
+            const result = await genericSlotExtractor.extractSlots(
+                'schedule_appointment',
+                'I want to schedule a medical consultation for tomorrow at 2pm'
+            );
+            
+            expect(result).toBeDefined();
+            expect(typeof result).toBe('object');
+            // Note: Actual extraction depends on LangChain API, so we test structure
+        }, 15000);
+
+        test('should extract cancellation slots', async () => {
+            const result = await genericSlotExtractor.extractSlots(
+                'cancel_appointment',
+                'Cancel appointment APT-123456'
+            );
+            
+            expect(result).toBeDefined();
+            expect(typeof result).toBe('object');
+        }, 15000);
+
+        test('should extract availability check slots', async () => {
+            const result = await genericSlotExtractor.extractSlots(
+                'check_availability',
+                'What medical appointments are available tomorrow morning?'
+            );
+            
+            expect(result).toBeDefined();
+            expect(typeof result).toBe('object');
+        }, 15000);
+
+        test('should return empty object for intents without slot extraction', async () => {
+            const result = await genericSlotExtractor.extractSlots('greet', 'hello');
+            expect(result).toEqual({});
+        });
+
+        test('should handle empty input gracefully', async () => {
+            const result = await genericSlotExtractor.extractSlots('schedule_appointment', '');
+            expect(result).toBeDefined();
+            expect(typeof result).toBe('object');
+        });
     });
 
-    test('should extract both amount and purpose', () => {
-        const result = extractSlotsSync('loan_inquiry', 'I need a $25000 car loan');
-        expect(result.amount).toBe('25000');
-        expect(result.purpose).toBe('Car purchase');
-    });
+    describe('Slot Extractor Utilities', () => {
+        test('should check if intent has slot extraction', () => {
+            expect(genericSlotExtractor.hasSlotExtraction('schedule_appointment')).toBe(true);
+            expect(genericSlotExtractor.hasSlotExtraction('cancel_appointment')).toBe(true);
+            expect(genericSlotExtractor.hasSlotExtraction('check_availability')).toBe(true);
+            expect(genericSlotExtractor.hasSlotExtraction('greet')).toBe(false);
+        });
 
-    test('should return empty object for unknown intent', () => {
-        const result = extractSlotsSync('unknown_intent', 'some text');
-        expect(result).toEqual({});
-    });
+        test('should return intents with slot extraction', () => {
+            const intentsWithSlots = genericSlotExtractor.getIntentsWithSlotExtraction();
+            expect(intentsWithSlots).toContain('schedule_appointment');
+            expect(intentsWithSlots).toContain('cancel_appointment');
+            expect(intentsWithSlots).toContain('check_availability');
+            expect(intentsWithSlots).not.toContain('greet');
+        });
 
-    test('should return empty object when no slots found', () => {
-        const result = extractSlotsSync('loan_inquiry', 'hello there');
-        expect(result).toEqual({});
-    });
-});
-
-describe('Slot Collection', () => {
-    test('should collect missing slots for loan_inquiry', async () => {
-        const result = await collectSlots('loan_inquiry', {});
-        expect(result).toBeDefined();
-        expect(result.amount).toBeDefined();
-        expect(result.purpose).toBeDefined();
-    });
-
-    test('should not overwrite pre-extracted slots', async () => {
-        const preExtracted = { amount: '15000' };
-        const result = await collectSlots('loan_inquiry', preExtracted);
-        expect(result.amount).toBe('15000');
-        expect(result.purpose).toBeDefined();
-    });
-
-    test('should handle unknown intent gracefully', async () => {
-        const result = await collectSlots('unknown_intent', {});
-        expect(result).toEqual({});
+        test('should return empty array for non-existent intent slots', () => {
+            const slots = genericSlotExtractor.getSlotDefinitions('nonexistent_intent');
+            expect(slots).toEqual([]);
+        });
     });
 }); 

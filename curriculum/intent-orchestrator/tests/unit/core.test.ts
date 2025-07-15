@@ -1,169 +1,169 @@
-import { detectIntent } from '../../src/intent/intentDetector';
-import { skills } from '../../src/intent/config';
-import { extractSlots } from '../../src/slots/slotExtractor';
-import { conversationMemory } from '../../src/memory/conversationMemory';
-import { slotDefinitions } from '../../src/slots/slotDefinitions';
+import { genericOrchestrator } from '../../src/core/genericOrchestrator';
+import { appointmentDomainConfig } from '../../src/domains/appointments.config';
+import { bankingDomainConfig } from '../../src/domains/banking.config';
 
-describe('Core Orchestrator Logic', () => {
-    beforeEach(() => {
-        conversationMemory.clearConversation();
+describe('Generic Orchestrator Core Logic', () => {
+    beforeAll(async () => {
+        // Load the appointments domain configuration
+        await genericOrchestrator.loadDomain(appointmentDomainConfig);
     });
 
-    describe('Intent Detection Integration', () => {
-        test('should detect valid intents from user input', async () => {
-            expect(await detectIntent('hello')).toBe('greet');
-            expect(await detectIntent('I need a loan')).toBe('loan_inquiry');
-            expect(await detectIntent('goodbye')).toBe('exit');
-            expect(await detectIntent('random text')).toBe('unknown');
-        }, 30000);
+    describe('Domain Loading and Management', () => {
+        test('should load domain configuration successfully', async () => {
+            const status = genericOrchestrator.getStatus();
+            expect(status.ready).toBe(true);
+            expect(status.currentDomain).toBe('appointments');
+            expect(status.supportedIntents).toBeGreaterThan(0);
+        });
+
+        test('should get current domain information', () => {
+            const domainInfo = genericOrchestrator.getCurrentDomain();
+            expect(domainInfo).toBeDefined();
+            expect(domainInfo.name).toBe('appointments');
+            expect(domainInfo.version).toBe('1.0.0');
+            expect(domainInfo.description).toContain('appointment');
+        });
+
+        test('should load multiple domains', async () => {
+            // Load banking domain
+            const loaded = await genericOrchestrator.loadDomain(bankingDomainConfig);
+            expect(loaded).toBe(true);
+
+            // Check available domains
+            const domains = genericOrchestrator.getAvailableDomains();
+            expect(domains).toContain('appointments');
+            expect(domains).toContain('banking');
+        });
+
+        test('should switch between domains', async () => {
+            // Switch to appointments
+            const switched = await genericOrchestrator.switchDomain('appointments');
+            expect(switched).toBe(true);
+            
+            let status = genericOrchestrator.getStatus();
+            expect(status.currentDomain).toBe('appointments');
+
+            // Switch to banking
+            const switchedToBanking = await genericOrchestrator.switchDomain('banking');
+            expect(switchedToBanking).toBe(true);
+            
+            status = genericOrchestrator.getStatus();
+            expect(status.currentDomain).toBe('banking');
+        });
     });
 
-    describe('Slot Extraction Integration', () => {
-        test('should extract slots from user input based on intent', async () => {
-            const intent = 'loan_inquiry';
-            const userInput = 'I need a $50000 car loan';
-            
-            const extractedSlots = await extractSlots(intent, userInput);
-            
-            expect(extractedSlots.amount).toBe('50000');
-            expect(extractedSlots.purpose).toBe('Car purchase');
+    describe('Message Processing Integration', () => {
+        beforeEach(async () => {
+            // Ensure we're using appointments domain for these tests
+            await genericOrchestrator.switchDomain('appointments');
+        });
+
+        test('should process greet messages', async () => {
+            const response = await genericOrchestrator.processMessage('Hello');
+            expect(response).toBeDefined();
+            expect(response).toContain('Welcome');
+        }, 15000);
+
+        test('should process appointment scheduling requests', async () => {
+            const response = await genericOrchestrator.processMessage('I want to schedule an appointment for tomorrow');
+            expect(response).toBeDefined();
+            expect(response.length).toBeGreaterThan(10);
+        }, 15000);
+
+        test('should process availability checks', async () => {
+            const response = await genericOrchestrator.processMessage('What\'s available tomorrow morning?');
+            expect(response).toBeDefined();
+            expect(response.length).toBeGreaterThan(10);
+        }, 15000);
+
+        test('should process cancellation requests', async () => {
+            const response = await genericOrchestrator.processMessage('Cancel appointment APT-123456');
+            expect(response).toBeDefined();
+            expect(response.length).toBeGreaterThan(10);
+        }, 15000);
+
+        test('should handle unknown input gracefully', async () => {
+            const response = await genericOrchestrator.processMessage('xyz random gibberish 123');
+            expect(response).toBeDefined();
+            expect(response).toContain('understand');
         }, 15000);
     });
 
-    describe('Conversation Memory Integration', () => {
-        test('should manage conversation state correctly', () => {
-            const intent = 'loan_inquiry';
-            const extractedSlots = { amount: '25000' };
-            
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            
-            expect(conversationMemory.getCurrentIntent()).toBe(intent);
-            expect(conversationMemory.getCollectedSlots()).toEqual(extractedSlots);
+    describe('Detailed Processing Information', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('appointments');
         });
 
-        test('should continue conversation with additional slots', () => {
-            conversationMemory.startOrContinueConversation('loan_inquiry', { amount: '25000' });
-            conversationMemory.startOrContinueConversation('loan_inquiry', { purpose: 'Home purchase' });
+        test('should provide detailed processing information', async () => {
+            const result = await genericOrchestrator.processMessageDetailed('Schedule a medical appointment');
             
-            expect(conversationMemory.getCollectedSlots()).toEqual({
-                amount: '25000',
-                purpose: 'Home purchase'
-            });
+            expect(result).toBeDefined();
+            expect(result.input).toBe('Schedule a medical appointment');
+            expect(result.intent).toBeDefined();
+            expect(result.slots).toBeDefined();
+            expect(result.response).toBeDefined();
+            expect(result.domain).toBe('appointments');
+            expect(result.processingTime).toBeGreaterThan(0);
+        }, 15000);
+
+        test('should handle errors in detailed processing', async () => {
+            // Force an error by processing without a loaded domain
+            genericOrchestrator.getCurrentDomain = () => null;
+            
+            const result = await genericOrchestrator.processMessageDetailed('test');
+            expect(result.intent).toBe('error');
+            expect(result.response).toContain('No domain');
+            
+            // Restore normal function
+            await genericOrchestrator.switchDomain('appointments');
         });
     });
 
-    describe('Skills Integration', () => {
-        test('should have handlers for all intents', () => {
-            expect(skills.greet).toBeDefined();
-            expect(skills.loan_inquiry).toBeDefined();
-            expect(skills.exit).toBeDefined();
-            expect(skills.unknown).toBeDefined();
+    describe('Supported Intents Information', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('appointments');
         });
 
-        test('should execute loan inquiry skill', async () => {
-            const handler = skills.loan_inquiry;
-            const slots = { amount: '30000', purpose: 'Education' };
+        test('should return supported intents with metadata', () => {
+            const intents = genericOrchestrator.getSupportedIntents();
+            expect(intents).toBeDefined();
+            expect(Array.isArray(intents)).toBe(true);
+            expect(intents.length).toBeGreaterThan(0);
             
-            const result = await handler(slots);
-            
-            expect(result).toBeDefined();
-            expect(typeof result).toBe('string');
-            expect(result).toContain('$30,000');
-            expect(result).toContain('education');
+            const greetIntent = intents.find(intent => intent.name === 'greet');
+            expect(greetIntent).toBeDefined();
+            expect(greetIntent.description).toBeDefined();
+            expect(greetIntent.examples).toBeDefined();
         });
 
-        test('should execute greet skill', async () => {
-            const handler = skills.greet;
-            const result = await handler({});
+        test('should indicate which intents have slot extraction', () => {
+            const intents = genericOrchestrator.getSupportedIntents();
             
-            expect(result).toBeDefined();
-            expect(typeof result).toBe('string');
-        });
-
-        test('should execute unknown skill', async () => {
-            const handler = skills.unknown;
-            const result = await handler({});
+            const scheduleIntent = intents.find(intent => intent.name === 'schedule_appointment');
+            const greetIntent = intents.find(intent => intent.name === 'greet');
             
-            expect(result).toBeDefined();
-            expect(typeof result).toBe('string');
+            expect(scheduleIntent?.hasSlotExtraction).toBe(true);
+            expect(greetIntent?.hasSlotExtraction).toBe(false);
         });
     });
 
-    describe('Slot Definition Integration', () => {
-        test('should identify missing slots for intent', () => {
-            const intent = 'loan_inquiry';
-            const collectedSlots: Record<string, any> = { amount: '25000' };
-            
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !collectedSlots[slot.name]);
-            
-            expect(missingSlots).toHaveLength(1);
-            expect(missingSlots[0].name).toBe('purpose');
+    describe('Orchestrator Status and Health', () => {
+        test('should indicate readiness correctly', () => {
+            const status = genericOrchestrator.getStatus();
+            expect(typeof status.ready).toBe('boolean');
+            expect(status.ready).toBe(true);
         });
 
-        test('should identify when all slots are collected', () => {
-            const intent = 'loan_inquiry';
-            const collectedSlots: Record<string, any> = { amount: '25000', purpose: 'Home purchase' };
-            
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !collectedSlots[slot.name]);
-            
-            expect(missingSlots).toHaveLength(0);
+        test('should track loaded domains', () => {
+            const status = genericOrchestrator.getStatus();
+            expect(Array.isArray(status.loadedDomains)).toBe(true);
+            expect(status.loadedDomains.length).toBeGreaterThan(0);
         });
-    });
 
-    describe('End-to-End Orchestration Flow', () => {
-        test('should handle complete loan inquiry flow', async () => {
-            const userInput = 'I need a $40000 home loan';
-            
-            // Step 1: Detect intent
-            const intent = await detectIntent(userInput);
-            expect(intent).toBe('loan_inquiry');
-            
-            // Step 2: Extract slots
-            const extractedSlots = await extractSlots(intent, userInput);
-            expect(extractedSlots.amount).toBe('40000');
-            expect(extractedSlots.purpose).toBe('Home purchase');
-            
-            // Step 3: Start conversation
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            const allCollectedSlots = conversationMemory.getCollectedSlots();
-            
-            // Step 4: Check for missing slots
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            expect(missingSlots).toHaveLength(0);
-            
-            // Step 5: Execute skill
-            const handler = skills[intent as keyof typeof skills];
-            const response = await handler(allCollectedSlots);
-            
-            expect(response).toContain('$40,000');
-            expect(response).toContain('home purchase');
-        }, 30000);
-
-        test('should handle partial information requiring follow-up', async () => {
-            const userInput = 'I need a loan';
-            
-            // Step 1: Detect intent
-            const intent = await detectIntent(userInput);
-            expect(intent).toBe('loan_inquiry');
-            
-            // Step 2: Extract slots (LangChain may extract purpose as "Other")
-            const extractedSlots = await extractSlots(intent, userInput);
-            // LangChain understands "I need a loan" as a general request
-            expect(extractedSlots.purpose).toBe('Other');
-            expect(extractedSlots.amount).toBeUndefined(); // No amount specified
-            
-            // Step 3: Start conversation
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            const allCollectedSlots = conversationMemory.getCollectedSlots();
-            
-            // Step 4: Check for missing slots (should still need amount)
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            expect(missingSlots.length).toBeGreaterThan(0);
-            expect(missingSlots.some(slot => slot.name === 'amount')).toBe(true);
-        }, 30000);
+        test('should provide meaningful status information', () => {
+            const status = genericOrchestrator.getStatus();
+            expect(status.currentDomain).toBeDefined();
+            expect(status.supportedIntents).toBeGreaterThan(0);
+        });
     });
 }); 

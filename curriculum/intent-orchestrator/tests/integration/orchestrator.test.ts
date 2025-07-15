@@ -1,260 +1,261 @@
-import { detectIntent } from '../../src/intent/intentDetector';
-import { extractSlots } from '../../src/slots/slotExtractor';
-import { conversationMemory } from '../../src/memory/conversationMemory';
-import { skills } from '../../src/intent/config';
-import { slotDefinitions } from '../../src/slots/slotDefinitions';
-import { collectSlots } from '../../src/slots/slotCollector';
+import { genericOrchestrator } from '../../src/core/genericOrchestrator';
+import { appointmentDomainConfig } from '../../src/domains/appointments.config';
+import { bankingDomainConfig } from '../../src/domains/banking.config';
+import { healthcareDomainConfig } from '../../src/domains/healthcare.config';
 
-describe('Orchestrator Integration Tests', () => {
-    beforeEach(() => {
-        conversationMemory.clearConversation();
+describe('Generic Orchestrator Integration Tests', () => {
+    beforeAll(async () => {
+        // Load all domain configurations
+        await genericOrchestrator.loadDomain(appointmentDomainConfig);
+        await genericOrchestrator.loadDomain(bankingDomainConfig);
+        await genericOrchestrator.loadDomain(healthcareDomainConfig);
     });
 
-    describe('Complete Loan Inquiry Flow', () => {
-        test('should handle complete loan request in one message', async () => {
+    describe('Appointments Domain Integration', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('appointments');
+        });
+
+        test('should handle complete appointment scheduling flow', async () => {
+            const userInput = 'I want to schedule a medical consultation for tomorrow at 2pm';
+            
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
+            
+            expect(result.intent).toBe('schedule_appointment');
+            expect(result.domain).toBe('appointments');
+            expect(result.response).toBeDefined();
+            expect(result.response.length).toBeGreaterThan(50);
+            expect(result.processingTime).toBeGreaterThan(0);
+        }, 20000);
+
+        test('should handle appointment cancellation flow', async () => {
+            const userInput = 'Cancel my appointment APT-123456';
+            
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
+            
+            expect(result.intent).toBe('cancel_appointment');
+            expect(result.slots.confirmation_id).toBe('APT-123456');
+            expect(result.response).toContain('Cancelled');
+            expect(result.domain).toBe('appointments');
+        }, 15000);
+
+        test('should handle availability checking flow', async () => {
+            const userInput = 'What medical appointments are available tomorrow morning?';
+            
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
+            
+            expect(result.intent).toBe('check_availability');
+            expect(result.domain).toBe('appointments');
+            expect(result.response).toBeDefined();
+        }, 15000);
+
+        test('should handle conversational flow with greetings and exits', async () => {
+            // Test greeting
+            let response = await genericOrchestrator.processMessage('Hello');
+            expect(response).toContain('Welcome');
+            
+            // Test main functionality
+            response = await genericOrchestrator.processMessage('I need an appointment');
+            expect(response).toBeDefined();
+            
+            // Test exit
+            response = await genericOrchestrator.processMessage('Goodbye');
+            expect(response).toContain('Thank you');
+        }, 30000);
+    });
+
+    describe('Banking Domain Integration', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('banking');
+        });
+
+        test('should handle banking loan inquiry flow', async () => {
             const userInput = 'I need a $50000 loan for a car purchase';
             
-            // Simulate full orchestrator flow
-            const intent = await detectIntent(userInput);
-            const extractedSlots = await extractSlots(intent, userInput);
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            const allCollectedSlots = conversationMemory.getCollectedSlots();
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            
-            // Should have all required slots
-            expect(missingSlots).toHaveLength(0);
-            
-            // Execute skill
-            const handler = skills[intent as keyof typeof skills];
-            const response = await handler(allCollectedSlots);
-            
-            expect(response).toContain('$50,000');
-            expect(response).toContain('car purchase');
-            expect(response).toContain('review your application');
-        }, 30000);
+            expect(result.intent).toBe('loan_inquiry');
+            expect(result.domain).toBe('banking');
+            expect(result.slots.amount).toBe('50000');
+            expect(result.slots.purpose).toBe('Car purchase');
+            expect(result.response).toContain('$50,000');
+        }, 15000);
 
-        test('should handle multi-turn conversation for loan inquiry', async () => {
-            // Turn 1: User expresses general interest
-            let userInput = 'I need a loan';
-            let intent = await detectIntent(userInput);
-            let extractedSlots = await extractSlots(intent, userInput);
+        test('should handle balance checking flow', async () => {
+            const userInput = 'What\'s my account balance?';
             
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            let allCollectedSlots = conversationMemory.getCollectedSlots();
-            let requiredSlots = slotDefinitions[intent] || [];
-            let missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            // Should still need slots
-            expect(missingSlots.length).toBeGreaterThan(0);
+            expect(result.intent).toBe('balance_check');
+            expect(result.domain).toBe('banking');
+            expect(result.response).toContain('Balance');
+        }, 15000);
+
+        test('should handle transaction history flow', async () => {
+            const userInput = 'Show me my recent transactions';
             
-            // Turn 2: User provides amount
-            userInput = '$30000';
-            intent = await detectIntent(userInput);
-            extractedSlots = await extractSlots('loan_inquiry', userInput); // Keep same intent
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            conversationMemory.startOrContinueConversation('loan_inquiry', extractedSlots);
-            allCollectedSlots = conversationMemory.getCollectedSlots();
-            missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            
-            // Should still need purpose (LangChain may extract amount and classify as "Other")
-            // But we'll still have collected the amount from the first turn
-            expect(missingSlots.length).toBeGreaterThanOrEqual(0);
-            // At least amount should be present now
-            expect(allCollectedSlots.amount).toBeDefined();
-            
-            // Turn 3: User provides purpose
-            userInput = 'for home purchase';
-            extractedSlots = await extractSlots('loan_inquiry', userInput);
-            
-            conversationMemory.startOrContinueConversation('loan_inquiry', extractedSlots);
-            allCollectedSlots = conversationMemory.getCollectedSlots();
-            missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            
-            // Should have all slots now
-            expect(missingSlots).toHaveLength(0);
-            
-            // Execute skill
-            const handler = skills.loan_inquiry;
-            const response = await handler(allCollectedSlots);
-            
-            expect(response).toContain('$30,000');
-            expect(response).toContain('home purchase');
-        }, 30000);
+            expect(result.intent).toBe('transaction_history');
+            expect(result.domain).toBe('banking');
+            expect(result.response).toContain('Transaction');
+        }, 15000);
     });
 
-    describe('Conversation Memory Integration', () => {
-        test('should maintain conversation state across turns', async () => {
-            // First turn
-            conversationMemory.startOrContinueConversation('loan_inquiry', { amount: '25000' });
-            
-            expect(conversationMemory.getCurrentIntent()).toBe('loan_inquiry');
-            expect(conversationMemory.isCurrentConversation('loan_inquiry')).toBe(true);
-            
-            // Second turn - should continue
-            conversationMemory.startOrContinueConversation('loan_inquiry', { purpose: 'Education' });
-            
-            expect(conversationMemory.getCollectedSlots()).toEqual({
-                amount: '25000',
-                purpose: 'Education'
-            });
+    describe('Healthcare Domain Integration', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('healthcare');
         });
 
-        test('should start new conversation for different intent', async () => {
-            // Start loan inquiry
-            conversationMemory.startOrContinueConversation('loan_inquiry', { amount: '25000' });
+        test('should handle healthcare appointment scheduling', async () => {
+            const userInput = 'I need to see a cardiologist urgently';
             
-            // Switch to greeting
-            conversationMemory.startOrContinueConversation('greet', {});
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            expect(conversationMemory.getCurrentIntent()).toBe('greet');
-            expect(conversationMemory.getCollectedSlots()).toEqual({});
-        });
+            expect(result.intent).toBe('schedule_appointment');
+            expect(result.domain).toBe('healthcare');
+            expect(result.slots.specialty).toBe('Cardiology');
+            expect(result.slots.urgency).toBe('Urgent (within 3 days)');
+        }, 15000);
 
-        test('should handle conversation timeout', async () => {
-            conversationMemory.startOrContinueConversation('loan_inquiry', { amount: '25000' });
+        test('should handle symptom checking', async () => {
+            const userInput = 'I have severe chest pain for 2 hours, severity 8';
             
-            // Mock time passing (6 minutes)
-            const originalNow = Date.now;
-            Date.now = jest.fn(() => originalNow() + 6 * 60 * 1000);
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            // Should not be current conversation anymore
-            expect(conversationMemory.isCurrentConversation('loan_inquiry')).toBe(false);
+            expect(result.intent).toBe('symptom_check');
+            expect(result.domain).toBe('healthcare');
+            expect(result.response).toContain('Priority');
+        }, 15000);
+
+        test('should handle prescription refills', async () => {
+            const userInput = 'Refill my blood pressure medication at CVS';
             
-            // New conversation should start fresh
-            conversationMemory.startOrContinueConversation('loan_inquiry', { amount: '35000' });
-            expect(conversationMemory.getCollectedSlots()).toEqual({ amount: '35000' });
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
             
-            // Restore original Date.now
-            Date.now = originalNow;
-        });
+            expect(result.intent).toBe('prescription_refill');
+            expect(result.domain).toBe('healthcare');
+            expect(result.response).toContain('Prescription');
+        }, 15000);
+
+        test('should handle medical records requests', async () => {
+            const userInput = 'Show me my lab results from last month';
+            
+            const result = await genericOrchestrator.processMessageDetailed(userInput);
+            
+            expect(result.intent).toBe('medical_records');
+            expect(result.domain).toBe('healthcare');
+            expect(result.response).toContain('Records');
+        }, 15000);
+    });
+
+    describe('Multi-Domain Switching', () => {
+        test('should maintain context when switching domains', async () => {
+            // Start with appointments
+            await genericOrchestrator.switchDomain('appointments');
+            let result = await genericOrchestrator.processMessageDetailed('Schedule an appointment');
+            expect(result.domain).toBe('appointments');
+            expect(result.intent).toBe('schedule_appointment');
+
+            // Switch to banking
+            await genericOrchestrator.switchDomain('banking');
+            result = await genericOrchestrator.processMessageDetailed('Check my balance');
+            expect(result.domain).toBe('banking');
+            expect(result.intent).toBe('balance_check');
+
+            // Switch to healthcare
+            await genericOrchestrator.switchDomain('healthcare');
+            result = await genericOrchestrator.processMessageDetailed('I have a headache');
+            expect(result.domain).toBe('healthcare');
+            expect(result.intent).toBe('symptom_check');
+        }, 30000);
+
+        test('should handle same user input differently across domains', async () => {
+            const userInput = 'I need an appointment';
+
+            // Appointments domain
+            await genericOrchestrator.switchDomain('appointments');
+            let result = await genericOrchestrator.processMessageDetailed(userInput);
+            expect(result.domain).toBe('appointments');
+            expect(result.intent).toBe('schedule_appointment');
+
+            // Healthcare domain
+            await genericOrchestrator.switchDomain('healthcare');
+            result = await genericOrchestrator.processMessageDetailed(userInput);
+            expect(result.domain).toBe('healthcare');
+            expect(result.intent).toBe('schedule_appointment');
+
+            // Responses should be different but both valid
+            expect(result.response).toBeDefined();
+        }, 30000);
     });
 
     describe('Error Handling and Edge Cases', () => {
-        test('should handle unknown intents gracefully', async () => {
-            const userInput = 'what is the weather like';
-            
-            const intent = await detectIntent(userInput);
-            expect(intent).toBe('unknown');
-            
-            const handler = skills.unknown;
-            const response = await handler({});
-            
-            expect(response).toBeDefined();
-            expect(typeof response).toBe('string');
-        }, 15000);
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('appointments');
+        });
 
-        test('should handle slot collection when no slots needed', async () => {
-            const intent = 'greet';
-            const extractedSlots = await extractSlots(intent, 'hello');
-            
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            const allCollectedSlots = conversationMemory.getCollectedSlots();
-            
-            const requiredSlots = slotDefinitions[intent] || [];
-            const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
-            
-            expect(missingSlots).toHaveLength(0);
-            
-            const handler = skills.greet;
-            const response = await handler(allCollectedSlots);
-            
-            expect(response).toBeDefined();
-        }, 15000);
+        test('should handle empty input gracefully', async () => {
+            const result = await genericOrchestrator.processMessageDetailed('');
+            expect(result.intent).toBe('unknown');
+            expect(result.response).toContain('understand');
+        });
 
-        test('should handle empty user input gracefully', async () => {
-            const userInput = '';
-            
-            const intent = await detectIntent(userInput);
-            expect(intent).toBe('unknown');
-            
-            const extractedSlots = await extractSlots(intent, userInput);
-            expect(extractedSlots).toEqual({});
-        }, 15000);
+        test('should handle completely random input', async () => {
+            const result = await genericOrchestrator.processMessageDetailed('xyz123!@# random gibberish');
+            expect(result.intent).toBe('unknown');
+            expect(result.response).toBeDefined();
+        });
 
-        test('should handle malformed slot values', async () => {
-            const slots = {
-                amount: 'not a number',
-                purpose: 'Business expansion'
-            };
-            
-            const handler = skills.loan_inquiry;
-            const response = await handler(slots);
-            
-            // Should handle gracefully - parseFloat('not a number') returns NaN
+        test('should handle very long input', async () => {
+            const longInput = 'I want to schedule an appointment '.repeat(20);
+            const result = await genericOrchestrator.processMessageDetailed(longInput);
+            expect(result.intent).toBe('schedule_appointment');
+            expect(result.response).toBeDefined();
+        }, 20000);
+
+        test('should provide meaningful error responses', async () => {
+            const response = await genericOrchestrator.processMessage('asdfasdfasdf');
             expect(response).toBeDefined();
-            expect(typeof response).toBe('string');
+            expect(response.length).toBeGreaterThan(10);
+            expect(response).toContain('understand');
         });
     });
 
-    describe('Slot Collection Integration', () => {
-        test('should collect missing slots using prompts', async () => {
-            const partialSlots = { amount: '40000' };
-            
-            const collectedSlots = await collectSlots('loan_inquiry', partialSlots);
-            
-            expect(collectedSlots).toBeDefined();
-            expect(collectedSlots.amount).toBe('40000');
-            expect(collectedSlots.purpose).toBeDefined();
+    describe('Performance and Reliability', () => {
+        beforeEach(async () => {
+            await genericOrchestrator.switchDomain('appointments');
         });
 
-        test('should not collect slots for unknown intent', async () => {
-            const collectedSlots = await collectSlots('unknown', {});
+        test('should process messages within reasonable time', async () => {
+            const startTime = Date.now();
+            const result = await genericOrchestrator.processMessageDetailed('Hello');
+            const endTime = Date.now();
             
-            expect(collectedSlots).toEqual({});
-        });
-    });
+            expect(result.processingTime).toBeLessThan(10000); // Less than 10 seconds
+            expect(endTime - startTime).toBeLessThan(15000); // Total less than 15 seconds
+        }, 20000);
 
-    describe('Full End-to-End Scenarios', () => {
-        test('should handle complete user journey: greeting -> loan inquiry -> exit', async () => {
-            // Step 1: Greeting
-            let userInput = 'hello';
-            let intent = await detectIntent(userInput);
-            let response = await skills[intent as keyof typeof skills]({});
-            
-            expect(intent).toBe('greet');
-            expect(response).toBeDefined();
-            
-            // Step 2: Loan inquiry
-            userInput = 'I need a $75000 business loan';
-            intent = await detectIntent(userInput);
-            const extractedSlots = await extractSlots(intent, userInput);
-            
-            conversationMemory.startOrContinueConversation(intent, extractedSlots);
-            const allCollectedSlots = conversationMemory.getCollectedSlots();
-            
-            response = await skills[intent as keyof typeof skills](allCollectedSlots);
-            
-            expect(intent).toBe('loan_inquiry');
-            expect(response).toContain('$75,000');
-            expect(response).toContain('business expansion');
-            
-            // Step 3: Exit
-            userInput = 'goodbye';
-            intent = await detectIntent(userInput);
-            response = await skills[intent as keyof typeof skills]({});
-            
-            expect(intent).toBe('exit');
-            expect(response).toBeDefined();
-        }, 30000);
+        test('should handle multiple concurrent requests', async () => {
+            const requests = [
+                'Hello',
+                'Schedule appointment',
+                'Check availability',
+                'Cancel appointment APT-123456',
+                'Goodbye'
+            ];
 
-        test('should handle mixed intent conversation', async () => {
-            // Start with greeting
-            let intent = await detectIntent('hi there');
-            expect(intent).toBe('greet');
+            const promises = requests.map(input => 
+                genericOrchestrator.processMessage(input)
+            );
+
+            const responses = await Promise.all(promises);
             
-            // Switch to loan inquiry
-            intent = await detectIntent('I need a loan');
-            expect(intent).toBe('loan_inquiry');
-            
-            // Random question (should be unknown)
-            intent = await detectIntent('what time is it');
-            expect(intent).toBe('unknown');
-            
-            // Back to loan inquiry
-            intent = await detectIntent('actually about that loan');
-            expect(intent).toBe('loan_inquiry');
+            expect(responses).toHaveLength(5);
+            responses.forEach(response => {
+                expect(response).toBeDefined();
+                expect(typeof response).toBe('string');
+            });
         }, 30000);
     });
 }); 

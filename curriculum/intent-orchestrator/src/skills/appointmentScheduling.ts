@@ -1,11 +1,17 @@
-import { collectSlots } from '../slots/slotCollector';
-
 export async function handleAppointmentScheduling(extractedSlots: Record<string, any> = {}) {
-    const slots = await collectSlots('schedule_appointment', extractedSlots);
+    const date = extractedSlots.date;
+    const time = extractedSlots.time;
+    const service = extractedSlots.service;
     
-    const date = slots.date;
-    const time = slots.time;
-    const service = slots.service;
+    // Check for missing required information
+    const missing = [];
+    if (!date) missing.push('date');
+    if (!time) missing.push('time');
+    if (!service) missing.push('service type');
+    
+    if (missing.length > 0) {
+        return `I'd be happy to schedule your appointment! I still need the following information: ${missing.join(', ')}. Please provide these details.`;
+    }
     
     // Generate a simple appointment ID
     const appointmentId = `APT-${Date.now().toString().slice(-6)}`;

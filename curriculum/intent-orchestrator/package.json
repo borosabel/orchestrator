@@ -2,18 +2,18 @@
   "name": "intent-orchestrator",
   "version": "1.0.0",
   "description": "Intent-based AI orchestrator with natural language processing and appointment booking",
-  "main": "dist/core/orchestrator.js",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/core/orchestrator.js",
-    "dev": "ts-node src/core/orchestrator.ts",
+    "start": "node dist/main.js",
+    "dev": "ts-node src/main.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:intent": "jest tests/unit/intent",
+    "test:intent": "jest tests/unit/intent.test.ts",
     "clean": "rm -rf dist",
-    "cli": "tsx src/core/orchestrator.ts",
-    "cli:dev": "tsx watch src/core/orchestrator.ts"
+    "cli": "tsx src/main.ts",
+    "cli:dev": "tsx watch src/main.ts"
   },
   "keywords": [
     "ai",

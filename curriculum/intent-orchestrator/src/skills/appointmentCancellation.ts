@@ -1,9 +1,11 @@
-import { collectSlots } from '../slots/slotCollector';
+// Appointment Cancellation Skill
 
 export async function handleAppointmentCancellation(extractedSlots: Record<string, any> = {}) {
-    const slots = await collectSlots('cancel_appointment', extractedSlots);
+    const confirmationId = extractedSlots.confirmation_id;
     
-    const confirmationId = slots.confirmation_id;
+    if (!confirmationId) {
+        return "To cancel your appointment, I'll need your confirmation ID. Please provide your appointment confirmation ID (format: APT-123456).";
+    }
     
     // Simulate looking up the appointment (in a real system, this would be a database query)
     const appointmentExists = await simulateAppointmentLookup(confirmationId);
