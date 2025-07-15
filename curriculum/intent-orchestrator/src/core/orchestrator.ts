@@ -20,7 +20,7 @@ async function main() {
             break;
         }
 
-        const intent = detectIntent(userInput);
+        const intent = await detectIntent(userInput);
         console.log(chalk.gray(`Detected intent: ${intent}`));
 
         // Extract slots from user input

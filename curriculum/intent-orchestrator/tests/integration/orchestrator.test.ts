@@ -15,7 +15,7 @@ describe('Orchestrator Integration Tests', () => {
             const userInput = 'I need a $50000 loan for a car purchase';
             
             // Simulate full orchestrator flow
-            const intent = detectIntent(userInput);
+            const intent = await detectIntent(userInput);
             const extractedSlots = extractSlots(intent, userInput);
             conversationMemory.startOrContinueConversation(intent, extractedSlots);
             
@@ -33,12 +33,12 @@ describe('Orchestrator Integration Tests', () => {
             expect(response).toContain('$50,000');
             expect(response).toContain('car purchase');
             expect(response).toContain('review your application');
-        });
+        }, 30000);
 
         test('should handle multi-turn conversation for loan inquiry', async () => {
             // Turn 1: User expresses general interest
             let userInput = 'I need a loan';
-            let intent = detectIntent(userInput);
+            let intent = await detectIntent(userInput);
             let extractedSlots = extractSlots(intent, userInput);
             
             conversationMemory.startOrContinueConversation(intent, extractedSlots);
@@ -51,7 +51,7 @@ describe('Orchestrator Integration Tests', () => {
             
             // Turn 2: User provides amount
             userInput = '$30000';
-            intent = detectIntent(userInput);
+            intent = await detectIntent(userInput);
             extractedSlots = extractSlots('loan_inquiry', userInput); // Keep same intent
             
             conversationMemory.startOrContinueConversation('loan_inquiry', extractedSlots);
@@ -79,7 +79,7 @@ describe('Orchestrator Integration Tests', () => {
             
             expect(response).toContain('$30,000');
             expect(response).toContain('home purchase');
-        });
+        }, 30000);
     });
 
     describe('Conversation Memory Integration', () => {
@@ -133,7 +133,7 @@ describe('Orchestrator Integration Tests', () => {
         test('should handle unknown intents gracefully', async () => {
             const userInput = 'what is the weather like';
             
-            const intent = detectIntent(userInput);
+            const intent = await detectIntent(userInput);
             expect(intent).toBe('unknown');
             
             const handler = skills.unknown;
@@ -141,7 +141,7 @@ describe('Orchestrator Integration Tests', () => {
             
             expect(response).toBeDefined();
             expect(typeof response).toBe('string');
-        });
+        }, 15000);
 
         test('should handle slot collection when no slots needed', async () => {
             const intent = 'greet';
@@ -164,12 +164,12 @@ describe('Orchestrator Integration Tests', () => {
         test('should handle empty user input gracefully', async () => {
             const userInput = '';
             
-            const intent = detectIntent(userInput);
+            const intent = await detectIntent(userInput);
             expect(intent).toBe('unknown');
             
             const extractedSlots = extractSlots(intent, userInput);
             expect(extractedSlots).toEqual({});
-        });
+        }, 15000);
 
         test('should handle malformed slot values', async () => {
             const slots = {
@@ -208,7 +208,7 @@ describe('Orchestrator Integration Tests', () => {
         test('should handle complete user journey: greeting -> loan inquiry -> exit', async () => {
             // Step 1: Greeting
             let userInput = 'hello';
-            let intent = detectIntent(userInput);
+            let intent = await detectIntent(userInput);
             let response = await skills[intent as keyof typeof skills]({});
             
             expect(intent).toBe('greet');
@@ -216,7 +216,7 @@ describe('Orchestrator Integration Tests', () => {
             
             // Step 2: Loan inquiry
             userInput = 'I need a $75000 business loan';
-            intent = detectIntent(userInput);
+            intent = await detectIntent(userInput);
             const extractedSlots = extractSlots(intent, userInput);
             
             conversationMemory.startOrContinueConversation(intent, extractedSlots);
@@ -230,29 +230,29 @@ describe('Orchestrator Integration Tests', () => {
             
             // Step 3: Exit
             userInput = 'goodbye';
-            intent = detectIntent(userInput);
+            intent = await detectIntent(userInput);
             response = await skills[intent as keyof typeof skills]({});
             
             expect(intent).toBe('exit');
             expect(response).toBeDefined();
-        });
+        }, 30000);
 
         test('should handle mixed intent conversation', async () => {
             // Start with greeting
-            let intent = detectIntent('hi there');
+            let intent = await detectIntent('hi there');
             expect(intent).toBe('greet');
             
             // Switch to loan inquiry
-            intent = detectIntent('I need a loan');
+            intent = await detectIntent('I need a loan');
             expect(intent).toBe('loan_inquiry');
             
             // Random question (should be unknown)
-            intent = detectIntent('what time is it');
+            intent = await detectIntent('what time is it');
             expect(intent).toBe('unknown');
             
             // Back to loan inquiry
-            intent = detectIntent('actually about that loan');
+            intent = await detectIntent('actually about that loan');
             expect(intent).toBe('loan_inquiry');
-        });
+        }, 30000);
     });
 }); 

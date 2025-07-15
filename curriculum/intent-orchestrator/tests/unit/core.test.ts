@@ -10,12 +10,12 @@ describe('Core Orchestrator Logic', () => {
     });
 
     describe('Intent Detection Integration', () => {
-        test('should detect valid intents from user input', () => {
-            expect(detectIntent('hello')).toBe('greet');
-            expect(detectIntent('I need a loan')).toBe('loan_inquiry');
-            expect(detectIntent('goodbye')).toBe('exit');
-            expect(detectIntent('random text')).toBe('unknown');
-        });
+        test('should detect valid intents from user input', async () => {
+            expect(await detectIntent('hello')).toBe('greet');
+            expect(await detectIntent('I need a loan')).toBe('loan_inquiry');
+            expect(await detectIntent('goodbye')).toBe('exit');
+            expect(await detectIntent('random text')).toBe('unknown');
+        }, 30000);
     });
 
     describe('Slot Extraction Integration', () => {
@@ -117,7 +117,7 @@ describe('Core Orchestrator Logic', () => {
             const userInput = 'I need a $40000 home loan';
             
             // Step 1: Detect intent
-            const intent = detectIntent(userInput);
+            const intent = await detectIntent(userInput);
             expect(intent).toBe('loan_inquiry');
             
             // Step 2: Extract slots
@@ -140,13 +140,13 @@ describe('Core Orchestrator Logic', () => {
             
             expect(response).toContain('$40,000');
             expect(response).toContain('home purchase');
-        });
+        }, 30000);
 
         test('should handle partial information requiring follow-up', async () => {
             const userInput = 'I need a loan';
             
             // Step 1: Detect intent
-            const intent = detectIntent(userInput);
+            const intent = await detectIntent(userInput);
             expect(intent).toBe('loan_inquiry');
             
             // Step 2: Extract slots (should be empty)
@@ -161,6 +161,6 @@ describe('Core Orchestrator Logic', () => {
             const requiredSlots = slotDefinitions[intent] || [];
             const missingSlots = requiredSlots.filter(slot => !allCollectedSlots[slot.name]);
             expect(missingSlots.length).toBeGreaterThan(0);
-        });
+        }, 30000);
     });
 }); 
