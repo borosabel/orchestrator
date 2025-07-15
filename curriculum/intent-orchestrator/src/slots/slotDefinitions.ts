@@ -35,6 +35,40 @@ export const slotDefinitions: IntentSlots = {
             ]
         }
     ],
+    schedule_appointment: [
+        {
+            name: 'date',
+            message: 'What date would you like to schedule for?',
+            type: 'input',
+            validate: (input: string) => {
+                // Basic validation - accept various date formats
+                if (input.length > 0) return true;
+                return 'Please enter a date (e.g., tomorrow, Monday, 2024-01-15)';
+            }
+        },
+        {
+            name: 'time',
+            message: 'What time would you prefer?',
+            type: 'input',
+            validate: (input: string) => {
+                // Basic validation - accept various time formats
+                if (input.length > 0) return true;
+                return 'Please enter a time (e.g., 2pm, 14:00, morning)';
+            }
+        },
+        {
+            name: 'service',
+            message: 'What type of appointment is this?',
+            type: 'list',
+            choices: [
+                'Medical consultation',
+                'Business meeting',
+                'Personal consultation',
+                'Technical support',
+                'Other'
+            ]
+        }
+    ],
     greet: [], // No slots needed for greeting
     exit: [], // No slots needed for exit
     unknown: [] // No slots needed for unknown

@@ -29,9 +29,20 @@ async function main() {
             console.log(chalk.gray(`Extracted info: ${JSON.stringify(extractedSlots)}`));
         }
 
-        // Handle conversation memory
-        conversationMemory.startOrContinueConversation(intent, extractedSlots);
+        // Handle conversation memory and detect intent changes
+        const { isIntentChange, previousIntent } = conversationMemory.startOrContinueConversationWithFeedback(intent, extractedSlots);
         const allCollectedSlots = conversationMemory.getCollectedSlots();
+        
+        // Provide feedback for intent changes
+        if (isIntentChange) {
+            const intentNames = {
+                'loan_inquiry': 'loan application',
+                'schedule_appointment': 'appointment scheduling'
+            };
+            const previousName = intentNames[previousIntent as keyof typeof intentNames] || previousIntent;
+            const currentName = intentNames[intent as keyof typeof intentNames] || intent;
+            console.log(chalk.yellow(`💭 I see you've switched from ${previousName} to ${currentName}. Starting fresh!`));
+        }
         
         // Check if all required slots are filled
         const requiredSlots = slotDefinitions[intent] || [];

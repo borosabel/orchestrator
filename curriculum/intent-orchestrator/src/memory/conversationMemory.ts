@@ -22,8 +22,11 @@ class ConversationMemory {
         );
     }
 
-    // Start a new conversation or continue existing one
-    startOrContinueConversation(intent: string, newSlots: Record<string, any> = {}): void {
+    // Start a new conversation or continue existing one (enhanced version)
+    startOrContinueConversationWithFeedback(intent: string, newSlots: Record<string, any> = {}): { isIntentChange: boolean, previousIntent: string | null } {
+        const previousIntent = this.state.currentIntent;
+        const isIntentChange = previousIntent !== null && previousIntent !== intent && intent !== 'greet' && intent !== 'exit' && intent !== 'unknown';
+        
         if (this.isCurrentConversation(intent)) {
             // Continue existing conversation - merge new slots
             this.state.collectedSlots = { ...this.state.collectedSlots, ...newSlots };
@@ -33,6 +36,13 @@ class ConversationMemory {
             this.state.collectedSlots = { ...newSlots };
         }
         this.state.lastMessageTime = Date.now();
+        
+        return { isIntentChange, previousIntent };
+    }
+    
+    // Backward compatible method for existing code
+    startOrContinueConversation(intent: string, newSlots: Record<string, any> = {}): void {
+        this.startOrContinueConversationWithFeedback(intent, newSlots);
     }
 
     // Get all collected slots for current conversation

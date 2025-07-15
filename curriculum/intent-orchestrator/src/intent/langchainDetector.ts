@@ -14,17 +14,18 @@ const model = new ChatOpenAI({
 
 // Define our intent classification prompt
 const intentPrompt = PromptTemplate.fromTemplate(`
-You are an intent classifier for a loan inquiry chatbot. 
+You are an intent classifier for a multi-service chatbot. 
 Classify the user's message into one of these categories:
 
 - greet: Greetings, hellos, introductions
 - loan_inquiry: Questions about loans, borrowing money, financial assistance
+- schedule_appointment: Requests to book, schedule, or arrange appointments or meetings
 - exit: Goodbyes, exit requests, ending conversation  
 - unknown: Anything else that doesn't fit the above categories
 
 User message: "{text}"
 
-Respond with ONLY the intent name (greet, loan_inquiry, exit, or unknown).
+Respond with ONLY the intent name (greet, loan_inquiry, schedule_appointment, exit, or unknown).
 `);
 
 export async function detectIntentWithLangChain(text: string): Promise<string> {
@@ -39,7 +40,7 @@ export async function detectIntentWithLangChain(text: string): Promise<string> {
         const intent = response.content.toString().trim().toLowerCase();
         
         // Validate the intent is one we support
-        const validIntents = ['greet', 'loan_inquiry', 'exit', 'unknown'];
+        const validIntents = ['greet', 'loan_inquiry', 'schedule_appointment', 'exit', 'unknown'];
         return validIntents.includes(intent) ? intent : 'unknown';
         
     } catch (error) {
