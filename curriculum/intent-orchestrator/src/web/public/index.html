@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Orchestrator Visualization Interface</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 450px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .domain-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .domain-selector select {
+            padding: 8px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .domain-selector select:hover {
+            border-color: #667eea;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #48bb78;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .graph-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .graph-header {
+            padding: 15px 20px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .graph-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-controls {
+            display: flex;
+            gap: 5px;
+            margin-left: 15px;
+        }
+
+        .step-controls {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .mode-indicator {
+            font-size: 12px;
+            color: #4a5568;
+            margin-left: 15px;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-clear {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .btn-clear:hover {
+            background: #feb2b2;
+        }
+
+        .btn-fit {
+            background: #bee3f8;
+            color: #2b6cb0;
+        }
+
+        .btn-fit:hover {
+            background: #90cdf4;
+        }
+
+        #graph {
+            height: calc(100% - 60px);
+            width: 100%;
+        }
+
+
+
+        .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+        }
+
+        .info-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            display: grid;
+            grid-template-rows: auto 1fr;
+            overflow: hidden;
+        }
+
+        .info-header {
+            padding: 15px 20px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-content {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            background: #f7fafc;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .btn-collapse {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #718096;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .btn-collapse:hover {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .no-data {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .intent-value {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .slots-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slot-item {
+            background: #edf2f7;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border-left: 3px solid #4299e1;
+        }
+
+        .slot-value {
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .context-info div {
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .step-detail {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .step-detail code {
+            background: #f1f5f9;
+            padding: 8px;
+            border-radius: 4px;
+            display: block;
+            font-size: 11px;
+            margin-top: 4px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+        }
+
+        .status-completed {
+            color: #48bb78;
+            font-weight: 600;
+        }
+
+        .status-running {
+            color: #ed8936;
+            font-weight: 600;
+        }
+
+        .status-error {
+            color: #e53e3e;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: #a0aec0;
+            font-weight: 600;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.bot {
+            text-align: left;
+        }
+
+        .message.system {
+            text-align: center;
+            color: #718096;
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        /* Hide processing step messages to keep chat clean */
+        .step-info {
+            display: none !important;
+        }
+
+        .processing {
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .message-content {
+            display: inline-block;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+        }
+
+        .message.bot .message-content {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .message-meta {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 5px;
+        }
+
+        .chat-input {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f7fafc;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .input-group button:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .input-group button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .processing {
+            text-align: center;
+            padding: 15px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .processing::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .step-info {
+            background: #f0fff4;
+            border-left: 4px solid #48bb78;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+        }
+
+        .step-info.error {
+            background: #fff5f5;
+            border-color: #e53e3e;
+            color: #c53030;
+        }
+
+        .step-info.processing {
+            background: #ebf8ff;
+            border-color: #3182ce;
+            color: #2b6cb0;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .metric {
+            background: #f7fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .metric-label {
+            color: #718096;
+        }
+
+        .no-messages {
+            text-align: center;
+            color: #a0aec0;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+
+        .domain-info {
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                🤖 Orchestrator Visualization
+                <span class="status">
+                    <span class="status-dot"></span>
+                    <span id="connection-status">Connected</span>
+                </span>
+            </h1>
+            <div class="domain-selector">
+                <label for="domain-select">Domain:</label>
+                <select id="domain-select">
+                    <!-- Domains will be populated dynamically from configuration -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Information Panel (Left) -->
+        <div class="info-container">
+            <div class="info-header">
+                📊 Processing Information
+                <button class="btn btn-collapse" id="info-collapse">−</button>
+            </div>
+            
+            <div class="info-content" id="info-content">
+                <div class="info-section">
+                    <h4>🎯 Current Intent</h4>
+                    <div id="current-intent" class="info-value">None</div>
+                </div>
+                
+                <div class="info-section">
+                    <h4>📋 Extracted Slots</h4>
+                    <div id="current-slots" class="info-value">None</div>
+                </div>
+                
+                <div class="info-section">
+                    <h4>🧠 Memory Context</h4>
+                    <div id="memory-context" class="info-value">No context loaded</div>
+                </div>
+                
+                <div class="info-section">
+                    <h4>🔍 Step Details</h4>
+                    <div id="step-details" class="info-value">Click a node to see details</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graph Visualization (Middle) -->
+        <div class="graph-container">
+            <div class="graph-header">
+                📊 Process Flow Graph
+                <div class="graph-controls">
+                    <button class="btn btn-fit" onclick="fitGraph()">📐 Fit</button>
+                    <button class="btn btn-clear" onclick="clearGraph()">🗑️ Clear</button>
+                    <div class="mode-controls">
+                        <button id="auto-mode" class="btn active">🚀 Auto</button>
+                        <button id="step-mode" class="btn">👟 Step</button>
+                    </div>
+                    <div class="step-controls" id="step-controls" style="display: none;">
+                        <button id="play-btn" class="btn">▶️</button>
+                        <button id="pause-btn" class="btn">⏸️</button>
+                        <button id="next-btn" class="btn">⏭️</button>
+                    </div>
+                    <span id="mode-indicator" class="mode-indicator">Auto Mode</span>
+                </div>
+            </div>
+            <div id="graph"></div>
+        </div>
+
+        <!-- Chat Interface (Right) -->
+        <div class="chat-container">
+            <div class="chat-header">
+                💬 Chat Interface
+                <div class="status">
+                    Session: <span id="session-id">Not started</span>
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="no-messages">
+                    👋 Welcome! Start a conversation to see the orchestrator in action.
+                    <div class="domain-info" id="domain-info">
+                        Loading domain information...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="message-input" placeholder="Type your message..." disabled>
+                    <button id="send-button" disabled>Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 

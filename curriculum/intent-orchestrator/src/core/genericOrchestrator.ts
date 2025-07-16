@@ -96,11 +96,8 @@ export class GenericOrchestrator {
             version: this.currentConfig.metadata.version,
             description: this.currentConfig.metadata.description,
             loadedAt: this.currentConfig.loadedAt,
-            intents: this.currentConfig.intents.map(i => ({
-                name: i.name,
-                description: i.description,
-                examples: i.examples
-            }))
+            intents: this.currentConfig.intents,
+            skills: this.currentConfig.skills
         } : null;
     }
 

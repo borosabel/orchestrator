@@ -13,7 +13,11 @@
     "test:intent": "jest tests/unit/intent.test.ts",
     "clean": "rm -rf dist",
     "cli": "tsx src/main.ts",
-    "cli:dev": "tsx watch src/main.ts"
+    "cli:dev": "tsx watch src/main.ts",
+    "demo": "tsx src/demo/moduleDemoCLI.ts",
+    "demo:dev": "tsx watch src/demo/moduleDemoCLI.ts",
+    "web": "tsx src/web/server.ts",
+    "web:dev": "tsx watch src/web/server.ts"
   },
   "keywords": [
     "ai",
@@ -28,14 +32,19 @@
     "@langchain/openai": "^0.0.14",
     "chalk": "^4.1.2",
     "commander": "^11.0.0",
+    "cors": "^2.8.5",
     "date-fns": "^2.30.0",
     "dotenv": "^17.2.0",
+    "express": "^4.18.2",
     "inquirer": "^9.2.0",
     "langchain": "^0.1.25",
+    "socket.io": "^4.7.2",
     "uuid": "^9.0.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.14",
+    "@types/express": "^4.17.18",
     "@types/inquirer": "^9.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
